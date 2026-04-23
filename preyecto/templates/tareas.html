@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es-mx">
+<head>
+    <meta charset="UTF-8">
+    <title>Mis Tareas - NutriApp</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
+        <div class="container">
+            <a class="navbar-brand text-success fw-bold" href="#">🌿 NutriApp Gestor</a>
+            <div class="navbar-nav ms-auto align-items-center">
+                <span class="nav-link text-white me-3">Bienvenido, <b>{{ session['usuario_nombre'] }}</b></span>
+                <a href="/salir" class="btn btn-outline-danger btn-sm">Cerrar Sesión</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card shadow border-0 rounded-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h2 class="fw-bold m-0">Mis Tareas Nutricionales</h2>
+                            <button class="btn btn-success fw-bold">+ Nueva Tarea</button>
+                        </div>
+
+                        {% if tareas %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Tarea</th>
+                                        <th>Estado</th>
+                                        <th>Fecha Límite</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for tarea in tareas %}
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold">{{ tarea.titulo }}</div>
+                                            <small class="text-muted">{{ tarea.descripcion }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if tarea.estado == 'completada' %}bg-success{% else %}bg-warning{% endif %}">
+                                                {{ tarea.estado | upper }}
+                                            </span>
+                                        </td>
+                                        <td>{{ tarea.fecha_limite }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary">Editar</button>
+                                            <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info text-center py-5">
+                            <h4>No tienes tareas registradas</h4>
+                            <p>Comienza agregando tu primera meta nutricional.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
