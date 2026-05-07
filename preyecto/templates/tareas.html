@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es-mx">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Mis Tareas - NutriApp</title>
@@ -7,67 +7,53 @@
 </head>
 <body class="bg-light">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
         <div class="container">
-            <a class="navbar-brand text-success fw-bold" href="/"> gestor de tareas</a>
-            <div class="navbar-nav ms-auto align-items-center">
-                <span class="nav-link text-white me-3">Bienvenido, <b>{{ session['usuario_nombre'] }}</b></span>
-                <a href="/salir" class="btn btn-outline-danger btn-sm">Cerrar Sesión</a>
+            <a class="navbar-brand text-success fw-bold" href="/">🌿 NutriApp</a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="text-light me-3 small">Hola, <b>{{ session['usuario_nombre'] }}</b></span>
+                <div class="btn-group">
+                    <a href="/tareas" class="btn btn-sm btn-success fw-bold">📋 Tareas</a>
+                    <a href="/perfil" class="btn btn-sm btn-outline-light">Mi Perfil</a>
+                    <a href="/salir" class="btn btn-sm btn-outline-danger">Cerrar Sesión</a>
+                </div>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-5">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card shadow border-0 rounded-4">
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2 class="fw-bold m-0">Mis Tareas Nutricionales</h2>
-                            <button class="btn btn-success fw-bold">+ Nueva Tarea</button>
-                        </div>
-
-                        {% if tareas %}
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>Tarea</th>
-                                        <th>Estado</th>
-                                        <th>Fecha Límite</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for tarea in tareas %}
-                                    <tr>
-                                        <td>
-                                            <div class="fw-bold">{{ tarea.titulo }}</div>
-                                            <small class="text-muted">{{ tarea.descripcion }}</small>
-                                        </td>
-                                        <td>
-                                            <span class="badge {% if tarea.estado == 'completada' %}bg-success{% else %}bg-warning{% endif %}">
-                                                {{ tarea.estado | upper }}
-                                            </span>
-                                        </td>
-                                        <td>{{ tarea.fecha_limite }}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary">Editar</button>
-                                            <button class="btn btn-sm btn-outline-danger">Eliminar</button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <div class="alert alert-info text-center py-5">
-                            <h4>No tienes tareas registradas</h4>
-                            <p>Comienza agregando tu primera meta nutricional.</p>
-                        </div>
-                        {% endif %}
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                
+                <div class="card p-4 shadow-lg border-0 mb-4" style="border-radius: 15px;">
+                    <div class="card-body">
+                        <h4 class="fw-bold text-success mb-3">Nueva Meta</h4>
+                        <form action="/tareas" method="POST" class="d-flex">
+                            <input type="text" name="descripcion" class="form-control me-2" placeholder="Ej: Beber 2L de agua" required>
+                            <button type="submit" class="btn btn-success fw-bold px-4">AÑADIR</button>
+                        </form>
                     </div>
                 </div>
+
+                <div class="card p-4 shadow-lg border-0" style="border-radius: 15px;">
+                    <div class="card-body">
+                        <h5 class="fw-bold text-muted mb-4">LISTA DE ACTIVIDADES</h5>
+                        
+                        <div class="list-group list-group-flush">
+                            {% for t in tareas %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center border-bottom py-3">
+                                <span class="fw-medium text-dark">{{ t.descripcion }}</span>
+                                <a href="/eliminar/{{ t._id }}" class="btn btn-sm btn-outline-danger border-0">
+                                    <small>ELIMINAR</small>
+                                </a>
+                            </div>
+                            {% else %}
+                            <p class="text-center text-muted">Aún no tienes tareas pendientes.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>

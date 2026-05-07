@@ -1,127 +1,132 @@
 from flask import Flask, request, render_template, redirect, url_for, session, g
 from pymongo import MongoClient
-from pymongo.errors import DuplicateKeyError, ConnectionFailure
 from bson.objectid import ObjectId
 from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'nutri_clave_2026'
 
-# --- CONFIGURACIÓN (Herramienta 9) ---
-MONGO_URI = 'mongodb://127.0.0.1:27017/'
-DATABASE_NAME = 'gestor_tareas'
 
-# --- CLASE GESTOR (Herramientas 7.4, 7.5 y 8) ---
-class GestorNutricion:
-    def __init__(self, cliente):
-        self.cliente = cliente
-        self.db = self.cliente[DATABASE_NAME]
-        self.usuarios = self.db['usuarios']
-        self.tareas = self.db['tareas']
-        
-        # 7.4 Índices: Asegurar que el email sea único y las tareas rápidas de buscar
-        self.usuarios.create_index("email", unique=True)
-        self.tareas.create_index([("usuario_id", 1), ("fecha_creacion", -1)])
-
-    def registrar_usuario(self, nombre, email, password):
-        """Crea un usuario nuevo"""
-        try:
-            self.usuarios.insert_one({
-                "nombre": nombre,
-                "email": email,
-                "password": password,
-                "fecha_registro": datetime.now()
-            })
-            return True
-        except DuplicateKeyError:
-            return False
-
-    def login_usuario(self, email, password):
-        """7.5 Proyección: Traemos el ID y Nombre para la sesión"""
-        return self.usuarios.find_one(
-            {"email": email, "password": password},
-            {"nombre": 1, "_id": 1}
-        )
-
-    def obtener_tareas_usuario(self, usuario_id):
-        """Busca todas las tareas de un usuario específico"""
-        tareas = list(self.tareas.find({"usuario_id": ObjectId(usuario_id)}))
-        for t in tareas:
-            t['_id'] = str(t['_id']) # Convertimos ID para el HTML
-        return tareas
-
-# --- GESTIÓN DE CONEXIÓN CON 'G' (Herramienta 9) ---
-def get_gestor():
-    if 'db_cliente' not in g:
-        g.db_cliente = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000)
-        g.gestor = GestorNutricion(g.db_cliente)
-    return g.gestor
+def get_db():
+    if 'db' not in g:
+       
+        client = MongoClient('mongodb://127.0.0.1:27017/')
+        g.db = client['gestor_tareas']
+    return g.db
 
 @app.teardown_appcontext
-def close_connection(exception):
-    cliente = g.pop('db_cliente', None)
-    if cliente is not None:
-        cliente.close()
+def close_db(e=None):
+    db = g.pop('db', None)
+    if db is not None:
+        db.client.close()
 
-# --- RUTAS DE LA APLICACIÓN ---
+
 
 @app.route('/')
 def index():
-    # Si ya está logueado, mandarlo directo a sus tareas
+    """Pantalla de Login"""
     if 'usuario_id' in session:
         return redirect(url_for('ver_tareas'))
     return render_template('index.html')
 
+@app.route('/registro', methods=['GET', 'POST'])
+def registro():
+    """Ruta para crear cuenta nueva"""
+    if request.method == 'POST':
+        db = get_db()
+       
+        nuevo_usuario = {
+            "nombre": request.form.get('nombre'),
+            "email": request.form.get('email'),
+            "password": request.form.get('password'),
+            "genero": request.form.get('genero'),
+            "fecha_nacimiento": request.form.get('fecha_nac'),
+            "fecha_registro": datetime.now()
+        }
+        db.usuarios.insert_one(nuevo_usuario)
+        return redirect(url_for('index'))
+    return render_template('registro.html')
+
 @app.route('/sesion', methods=['POST'])
 def inicio_sesion():
+    """Valida las credenciales"""
+    db = get_db()
     email = request.form.get('email')
     password = request.form.get('password')
     
-    try:
-        gestor = get_gestor()
-        usuario = gestor.login_usuario(email, password)
-        
-        if usuario:
-            # Guardamos datos importantes en la sesión
-            session['usuario_id'] = str(usuario['_id'])
-            session['usuario_nombre'] = usuario['nombre']
-            return redirect(url_for('ver_tareas'))
-    except Exception as e:
-        print(f"Error: {e}")
-        
+    user = db.usuarios.find_one({"email": email, "password": password})
+    if user:
+        session['usuario_id'] = str(user['_id'])
+        session['usuario_nombre'] = user['nombre']
+        return redirect(url_for('ver_tareas'))
     return redirect(url_for('index'))
 
-@app.route('/registro', methods=['GET', 'POST'])
-def registro():
-    mensaje = None
-    if request.method == 'POST':
-        nombre = request.form.get('nombre')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        
-        try:
-            gestor = get_gestor()
-            if gestor.registrar_usuario(nombre, email, password):
-                return redirect(url_for('index'))
-            else:
-                mensaje = "El correo ya está registrado."
-        except:
-            mensaje = "Error de conexión con la base de datos."
-            
-    return render_template('registro.html', mensaje=mensaje)
 
-@app.route('/tareas')
+
+@app.route('/tareas', methods=['GET', 'POST'])
 def ver_tareas():
-    """Página protegida: Gestor de Tareas"""
-    if 'usuario_id' not in session:
+    """Misión: Agregar y Listar tareas"""
+    if 'usuario_id' not in session: 
         return redirect(url_for('index'))
     
-    gestor = get_gestor()
-    mis_tareas = gestor.obtener_tareas_usuario(session['usuario_id'])
+    db = get_db()
+    
+    if request.method == 'POST':
+        descripcion = request.form.get('descripcion')
+        if descripcion:
+            db.tareas.insert_one({
+                "usuario_id": ObjectId(session['usuario_id']),
+                "descripcion": descripcion,
+                "fecha": datetime.now()
+            })
+        return redirect(url_for('ver_tareas'))
+
+    
+    mis_tareas = list(db.tareas.find({"usuario_id": ObjectId(session['usuario_id'])}).sort("fecha", -1))
     return render_template('tareas.html', tareas=mis_tareas)
+
+@app.route('/perfil')
+def ver_perfil():
+    """Misión: Mostrar datos del usuario"""
+    if 'usuario_id' not in session: 
+        return redirect(url_for('index'))
+    
+    db = get_db()
+    user_data = db.usuarios.find_one({"_id": ObjectId(session['usuario_id'])})
+    return render_template('ver_perfil.html', u=user_data)
+
+@app.route('/editar', methods=['GET', 'POST'])
+def editar_perfil():
+    """Misión: Actualizar datos de cuenta"""
+    if 'usuario_id' not in session: 
+        return redirect(url_for('index'))
+    
+    db = get_db()
+    uid = ObjectId(session['usuario_id'])
+
+    if request.method == 'POST':
+        db.usuarios.update_one({"_id": uid}, {"$set": {
+            "nombre": request.form.get('nombre'),
+            "email": request.form.get('email'),
+            "genero": request.form.get('genero'),
+            "fecha_nacimiento": request.form.get('fecha_nac')
+        }})
+        session['usuario_nombre'] = request.form.get('nombre')
+        return redirect(url_for('ver_perfil'))
+
+    user_data = db.usuarios.find_one({"_id": uid})
+    return render_template('editar_perfil.html', u=user_data)
+
+@app.route('/eliminar/<id>')
+def eliminar(id):
+    """Borrar una tarea específica"""
+    if 'usuario_id' in session:
+        get_db().tareas.delete_one({"_id": ObjectId(id)})
+    return redirect(url_for('ver_tareas'))
 
 @app.route('/salir')
 def salir():
+    """Cerrar sesión"""
     session.clear()
     return redirect(url_for('index'))
 
